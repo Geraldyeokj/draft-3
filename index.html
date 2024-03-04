@@ -1,0 +1,143 @@
+<script src="https://cdn.jsdelivr.net/gh/netizenorg/netnet-standard-library/build/nn.min.js"></script>
+<script>
+  /* global nn */
+  
+  let canvas, ctx, circles, velocities;
+  
+  function setup() {
+    nn.get('body').css({ margin: '0', height: '100vh' });
+    canvas = nn.create('canvas').addTo('body');
+    canvas.width = nn.width; // match the window's width
+    canvas.height = nn.height; // match the window's height
+    ctx = canvas.getContext('2d');
+    
+    // Create 24 tiny circles with initial random velocities
+    circles = [];
+    velocities = [];
+    panel_bounced = []; // 0 for none, 1234 for NESW
+    next_bounce = [];
+    for (let i = 0; i < 24; i++) {
+      circles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: 0,
+      });
+      velocities.push({
+        x: (Math.random() - 0.5) * 5, // Random x velocity between -2.5 and 2.5
+        y: (Math.random() - 0.5) * 5, // Random y velocity between -2.5 and 2.5
+      });
+      panel_bounced.push(Math.floor(Math.random() * 4) + 1);
+      next_bounce.push(Math.random())
+    }
+  }
+  
+  function drawCircle(x, y, radius) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.closePath();
+  }
+  
+  function drawLine(startX, startY, endX, endY, isWavy) {
+    ctx.beginPath();
+    const length = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2);
+    const lineWidth = Math.min(0.3 + length * 0.004, 10); // Adjust the multiplier for desired thickness
+    ctx.lineWidth = lineWidth;
+    
+    if (isWavy) {
+      // Draw wavy line
+      ctx.moveTo(startX, startY);
+      ctx.quadraticCurveTo(startX + (endX - startX) / 2, startY + 50, endX, endY);
+    } else {
+      // Draw straight line
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+    }
+    
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
+    ctx.closePath();
+    
+    // Reset line width to default
+    ctx.lineWidth = 1;
+  }
+  
+  function updateCirclePosition(circle, velocity) {
+    // Update circle position based on velocity
+    circle.x += velocity.x;
+    circle.y += velocity.y;
+    
+    // Bounce off the canvas edges
+    if (circle.x - circle.radius < 0 || circle.x + circle.radius > canvas.width) {
+      velocity.x = -velocity.x;
+    }
+    if (circle.y - circle.radius < 0 || circle.y + circle.radius > canvas.height) {
+      velocity.y = -velocity.y;
+    }
+  }
+  
+  function drawRectanglesAndConnectCorners() {
+    // Draw rectangle surrounding the canvas edge
+    ctx.beginPath();
+    ctx.rect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = 'grey';
+    ctx.stroke();
+    ctx.closePath();
+
+    // Draw rectangle in the middle of the canvas
+    const middleRectWidth = canvas.width / 2;
+    const middleRectHeight = canvas.height / 2;
+    const middleRectX = (canvas.width - middleRectWidth) / 2;
+    const middleRectY = (canvas.height - middleRectHeight) / 2;
+    
+    ctx.beginPath();
+    ctx.rect(middleRectX, middleRectY, middleRectWidth, middleRectHeight);
+    ctx.strokeStyle = 'grey';
+    ctx.stroke();
+    ctx.closePath();
+
+    // Connect corners of the rectangles
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(middleRectX, middleRectY);
+    ctx.moveTo(canvas.width, 0);
+    ctx.lineTo(middleRectX + middleRectWidth, middleRectY);
+    ctx.moveTo(0, canvas.height);
+    ctx.lineTo(middleRectX, middleRectY + middleRectHeight);
+    ctx.moveTo(canvas.width, canvas.height);
+    ctx.lineTo(middleRectX + middleRectWidth, middleRectY + middleRectHeight);
+    ctx.strokeStyle = 'grey';
+    ctx.stroke();
+    ctx.closePath();
+  }
+  
+  function draw() {
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw rectangles and connect corners
+    drawRectanglesAndConnectCorners();
+    
+    // Update and draw 24 tiny circles
+    for (let i = 0; i < 24; i++) {
+      updateCirclePosition(circles[i], velocities[i]);
+      drawCircle(circles[i].x, circles[i].y, circles[i].radius);
+    }
+    
+    // Connect 12 circles with straight lines
+    for (let i = 0; i < 12; i++) {
+      drawLine(circles[i].x, circles[i].y, circles[i + 12].x, circles[i + 12].y, false);
+    }
+    
+    // Connect remaining 12 circles with wavy lines
+    for (let i = 12; i < 24; i++) {
+      drawLine(circles[i].x, circles[i].y, circles[i - 12].x, circles[i - 12].y, true);
+    }
+    
+    requestAnimationFrame(draw);
+  }
+  
+  nn.on('load', setup);
+  nn.on('load', draw);
+</script>
